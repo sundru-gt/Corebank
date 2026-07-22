@@ -39,6 +39,7 @@ async function userRegisterController(req,res)
     await emailService.sendRegisterationEmail(user.email,user.name);
 }
 async function userLoginController(req, res) {
+    console.log(req.body);
     const { email,password }=req.body
     //.select password is required as in DB we have select=false in password
     const user = await userModel.findOne({ email }).select("+password")
