@@ -3,6 +3,7 @@ const LedgerModel = require("../models/ledger.model");
 const accountModel = require("../models/account.model");
 const emailService = require("../services/email.service");
 const mongoose = require("mongoose");
+const transactionModel = require("../models/transaction.model");
 //creating a new transaction
 //step flow
 /*
@@ -21,7 +22,6 @@ async function createTransaction(req, res) {
     const { fromAccount, toAccount, amount, idempotencyKey } = req.body;
 
     if (!fromAccount || !toAccount || !amount || !idempotencyKey) {
-        console.log(idempotencyKey);
         return res.status(400).json({
             message: "Missing required fields"
         })
@@ -98,38 +98,52 @@ async function createTransaction(req, res) {
 
 
     //creating a new transaction 
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-    const transaction = await TransactionModel({
-        fromAccount,
-        toAccount,
-        amount,
-        idempotencyKey,
-        status: "PENDING"
-    })
+        const transaction = (await TransactionModel.create([{
+            fromAccount,
+            toAccount,
+            amount,
+            idempotencyKey,
+            status: "PENDING"
+        }], { session }))[0]
 
-    const debitLedgerEntry = await LedgerModel.create([{
-        account: fromAccount,
-        amount: amount,
-        transaction: transaction[0]._id,
-        type: "DEBIT"
-    }], { session })
-
-    const creditLedgerEntry = await LedgerModel.create([{
-        account: toAccount,
-        amount: amount,
-        transaction: transaction[0]._id,
-        type: "CREDIT"
-    }], { session })
+        const debitLedgerEntry = await LedgerModel.create([{
+            account: fromAccount,
+            amount: amount,
+            transaction: transaction[0]._id,
+            type: "DEBIT"
+        }], { session })
 
 
-    transaction.status = "COMPLETED";
-    await transaction.save({ session });
 
-    await session.commitTransaction();
-    session.endSession();
+        const creditLedgerEntry = await LedgerModel.create([{
+            account: toAccount,
+            amount: amount,
+            transaction: transaction[0]._id,
+            type: "CREDIT"
+        }], { session })
 
+
+        //transaction.status = "COMPLETED";
+        //await transaction.save({ session });
+        //CHANGING THESE TO PREVENT CONFLICTS.
+
+        await transactionModel.findOneAndUpdate(
+            { _id: transaction._id },
+            { status: "COMPLETED" },
+            { session }
+        )
+
+        await session.commitTransaction();
+        session.endSession();
+    } catch (error) {
+        return res.status(400).json({
+            message: "Transaction is pending due to some issues, please try again later."
+        })
+    }
 
     //SENDING EMAIL NOTIFICATION TO THE SENDER
 

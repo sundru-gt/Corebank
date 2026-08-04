@@ -1,46 +1,45 @@
-const userModel=require("../models/user.model")
-const jwt=require("jsonwebtoken")
-const emailService=require("../services/email.service")
-async function userRegisterController(req,res)
-{
-    const {email,password,name}=req.body;
+const userModel = require("../models/user.model")
+const jwt = require("jsonwebtoken")
+const emailService = require("../services/email.service")
+const tokenBlackListModel = require("../models/blackList.model")
+async function userRegisterController(req, res) {
+    const { email, password, name } = req.body;
 
-    const isExists= await userModel.findOne({
+    const isExists = await userModel.findOne({
         email: email
     })
 
-    if(isExists)
-    {
+    if (isExists) {
         return res.status(422).json({
-            message:"user already exists with this email",
+            message: "user already exists with this email",
             status: "failed"
         })
     }
-    const user=await userModel.create({
-        email,password,name
+    const user = await userModel.create({
+        email, password, name
     })
 
-    const token=jwt.sign({userId:user._id},process.env.JWT_SECRET,
-    {
-        expiresIn:"3d"
-    })
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET,
+        {
+            expiresIn: "3d"
+        })
 
-    res.cookie("token",token);
+    res.cookie("token", token);
     res.status(201).json(
         {
-            user:{
-                _id:user._id,
-                email:user.email,
-                name:user.name
+            user: {
+                _id: user._id,
+                email: user.email,
+                name: user.name
             },
             token
         }
     )
-    await emailService.sendRegisterationEmail(user.email,user.name);
+    await emailService.sendRegisterationEmail(user.email, user.name);
 }
 async function userLoginController(req, res) {
     console.log(req.body);
-    const { email,password }=req.body
+    const { email, password } = req.body
     //.select password is required as in DB we have select=false in password
     const user = await userModel.findOne({ email }).select("+password")
 
@@ -73,7 +72,26 @@ async function userLoginController(req, res) {
 
 }
 
-module.exports={
+async function userLogoutController(req, res) {
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+
+    if (!token) {
+        return res.status(200).json({
+            message: "user logged out succesfully"
+        })
+    }
+
+
+    await tokenBlackListModel.create({
+        token: token
+    })
+    res.clearCookie("token");
+    res.status(200).json({
+        message: "user logged out succesfully"
+    })
+}
+module.exports = {
     userRegisterController,
-    userLoginController
+    userLoginController,
+    userLogoutController
 }
