@@ -7,4 +7,7 @@ router.post("/",authMiddleware.authMiddleware,accountController.createAccountCon
 
 //API For fetching all accounts of a user
 router.get("/",authMiddleware.authMiddleware,accountController.getUserAccountController)
+
+//API For fetching BALANCE of a user account
+router.get("/balance/:accountId",authMiddleware.authMiddleware,accountController.getAccountBalanceController)
 module.exports=router
