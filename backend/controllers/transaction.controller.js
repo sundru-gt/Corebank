@@ -98,11 +98,12 @@ async function createTransaction(req, res) {
 
 
     //creating a new transaction 
+    let transaction;
     try {
         const session = await mongoose.startSession();
         session.startTransaction();
 
-        const transaction = (await TransactionModel.create([{
+        transaction = (await TransactionModel.create([{
             fromAccount,
             toAccount,
             amount,
@@ -113,7 +114,7 @@ async function createTransaction(req, res) {
         const debitLedgerEntry = await LedgerModel.create([{
             account: fromAccount,
             amount: amount,
-            transaction: transaction[0]._id,
+            transaction: transaction._id,
             type: "DEBIT"
         }], { session })
 
@@ -122,7 +123,7 @@ async function createTransaction(req, res) {
         const creditLedgerEntry = await LedgerModel.create([{
             account: toAccount,
             amount: amount,
-            transaction: transaction[0]._id,
+            transaction: transaction._id,
             type: "CREDIT"
         }], { session })
 

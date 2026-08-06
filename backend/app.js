@@ -1,16 +1,27 @@
-const express= require('express');
-const cookieParser=require('cookie-parser')
-const authRouter=require("./routes/auth.routes")
-const accountRouter=require("./routes/account.routes")
-const transactionRouter=require("./routes/transaction.routes")
-const app= express();
+const express = require('express');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
+const authRouter = require("./routes/auth.routes")
+const accountRouter = require("./routes/account.routes")
+const transactionRouter = require("./routes/transaction.routes")
+const app = express();
 
 //to use the req.body
 app.use(express.json());
 app.use(cookieParser());
+app.use(cors({
+    origin: 'http://localhost:5173', // Vite default port
+    credentials: true
+}));
 
-app.use("/api/auth",authRouter)
-app.use("/api/accounts",accountRouter)
-app.use("/api/transactions",transactionRouter)
 
-module.exports=app;
+//FOR DEPLOYMENT
+app.get("/", (req, res) => {
+    res.send("CoreBank is Up and Runnning");
+})
+
+app.use("/api/auth", authRouter)
+app.use("/api/accounts", accountRouter)
+app.use("/api/transactions", transactionRouter)
+
+module.exports = app;
